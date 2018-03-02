@@ -205,30 +205,8 @@ func shrinkPartition(id string) error {
 
 func umount(id string) error {
 	cmd := exec.Command("sh", "-c", "umount "+id)
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	outLog, err := ioutil.ReadAll(stdout)
-	if err != nil {
-		return err
-	}
-	if len(outLog) != 0 {
-		log.Println(string(outLog))
-	}
-	errLog, err := ioutil.ReadAll(stderr)
-	if err != nil {
-		return err
-	}
-	if len(errLog) != 0 {
-		return errors.New(string(errLog))
-	}
+	out, err := cmd.CombinedOutput()
+	if err != nil { return err }
+	log.Println(string(out))
 	return nil
 }
