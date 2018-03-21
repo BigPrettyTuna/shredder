@@ -14,16 +14,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var a syscall.Statfs_t
+	var (
+		a     syscall.Statfs_t
+		max   uint64
+		maxId string
+	)
 	outLogString := strings.Split(outLog, "\n")
-	var max uint64
-	var maxId string
 	for _, e := range outLogString {
 		_, err := execScripts(exec.Command("sh", "-c", "mount -r "+e+" /mnt"))
-		if err != nil {
-			log.Println(err)
-		} else {
+		if err == nil {
 			syscall.Statfs("/mnt", &a)
+			log.Println(a.Bfree * uint64(a.Bsize) / 1024)
 			if a.Bfree*uint64(a.Bsize)/1024 > max {
 				max = a.Bfree * uint64(a.Bsize) / 1024
 				maxId = e
@@ -44,14 +45,20 @@ func main() {
 			log.Fatal(err)
 		}
 		if strings.TrimRight(string(fs), "\n") == "ntfs" {
-			execScripts(exec.Command("sh", "-c", "size=$((($(sfdisk -s "+maxId+")-20971520)*1024)) && echo $size  && ntfsresize --no-action --size $size "+maxId+" && ntfsfix -d "+maxId))
-		} else if strings.TrimRight(string(fs), "\n") == "ext4" {
-			execScripts(exec.Command("sh", "-c", "echo \"ext support will become soon\" "))
+			_, err = execScripts(exec.Command("sh", "-c", "size=$((($(sfdisk -s "+maxId+")-20971520)*1024)) && echo $size  && ntfsresize --size $size "+maxId+" && ntfsfix -d "+maxId))
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if strings.TrimRight(string(fs), "\n 1 2 3 4 5 6 7 8 9 0") == "ext" {
+			execScripts(exec.Command("sh", "-c", "size=$((($(sfdisk -s "+maxId+")-20971520))) && echo $size  && resize2fs "+maxId+" $size\"k\" && e2fsck -f -y "+maxId))
 		} else {
-			execScripts(exec.Command("sh", "-c", "echo \"not supported fs\" "))
+			err = errors.New("not supported fs")
 		}
 		r := strings.NewReplacer("/", "\\/")
-		execScripts(exec.Command("sh", "-c", "sfdisk -d "+strings.TrimRight(maxId, "1234567890")+" > /opt/ptold.sfdisk && oldsize=$(($(sfdisk -s "+maxId+")*2)) && newsize=$(($oldsize-41943040)) && sed '"+r.Replace(maxId)+"/s/'$oldsize'/'$newsize'/g' /opt/ptold.sfdisk > /opt/ptnew.sfdisk && sfdisk -n "+strings.TrimRight(maxId, "1234567890")+" < /opt/ptnew.sfdisk"))
+		_, err = execScripts(exec.Command("sh", "-c", "sfdisk -d "+strings.TrimRight(maxId, "1234567890")+" > /opt/ptold.sfdisk && oldsize=$(($(sfdisk -s "+maxId+")*2)) && newsize=$(($oldsize-41943040)) && sed '"+r.Replace(maxId)+"/s/'$oldsize'/'$newsize'/g' /opt/ptold.sfdisk > /opt/ptnew.sfdisk && sfdisk "+strings.TrimRight(maxId, "1234567890")+" < /opt/ptnew.sfdisk"))
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		log.Fatal("not enough free space")
 	}
