@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"fmt"
 )
 
 func main() {
@@ -52,7 +53,7 @@ func main() {
 		} else if strings.TrimRight(string(fs), "\n 1 2 3 4 5 6 7 8 9 0") == "ext" {
 			execScripts(exec.Command("sh", "-c", "size=$((($(sfdisk -s "+maxId+")-20971520))) && echo $size  && resize2fs "+maxId+" $size\"k\" && e2fsck -f -y "+maxId))
 		} else {
-			err = errors.New("not supported fs")
+			fmt.Println("not supported fs")
 		}
 		r := strings.NewReplacer("/", "\\/")
 		_, err = execScripts(exec.Command("sh", "-c", "sfdisk -d "+strings.TrimRight(maxId, "1234567890")+" > /opt/ptold.sfdisk && oldsize=$(($(sfdisk -s "+maxId+")*2)) && newsize=$(($oldsize-41943040)) && sed '"+r.Replace(maxId)+"/s/'$oldsize'/'$newsize'/g' /opt/ptold.sfdisk > /opt/ptnew.sfdisk && sfdisk "+strings.TrimRight(maxId, "1234567890")+" < /opt/ptnew.sfdisk"))
